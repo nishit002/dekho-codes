@@ -4,3 +4,6 @@ plotly
 python-docx
 openpyxl
 kaleido
+openpyxl
+beautifulsoup4
+requests
