@@ -9,9 +9,11 @@ from docx import Document
 from docx.shared import Inches
 import os
 
+# Extract the ranking name from the file name
 def extract_ranking_name(filename):
     return os.path.splitext(filename)[0]
 
+# Process Excel files and return all combined data
 def process_excel_files(uploaded_files, ranking_names):
     all_data = pd.DataFrame()
     for i, uploaded_file in enumerate(uploaded_files):
@@ -21,6 +23,7 @@ def process_excel_files(uploaded_files, ranking_names):
         all_data = pd.concat([all_data, df], ignore_index=True)
     return all_data
 
+# Perform Google search for the IIRF 2023 ranking
 def google_search_college_ranking(college_name):
     query = f"{college_name} IIRF Ranking 2023"
     result_text = ""
@@ -35,10 +38,7 @@ def google_search_college_ranking(college_name):
         print(f"Error fetching data from Google: {e}")
     return result_text
 
-from docx import Document
-from docx.shared import Inches
-from io import BytesIO
-
+# Generate the Word document report
 def create_word_report(college_name, paragraph, table_data, graph_bytes):
     doc = Document()
     doc.add_heading(f"{college_name} Ranking Report", level=0)
@@ -59,11 +59,7 @@ def create_word_report(college_name, paragraph, table_data, graph_bytes):
 
     # Add the graph to the Word document
     doc.add_paragraph('Ranking Graph:')
-    graph_image = BytesIO()
-    graph_bytes.seek(0)
-    graph_image.write(graph_bytes.read())
-    doc.add_picture(graph_image, width=Inches(6))
-    graph_image.close()
+    doc.add_picture(graph_bytes, width=Inches(6))
 
     # Save the document to a BytesIO object to return
     doc_bytes = BytesIO()
@@ -71,6 +67,7 @@ def create_word_report(college_name, paragraph, table_data, graph_bytes):
     doc_bytes.seek(0)
     return doc_bytes
 
+# Generate the ranking paragraph based on college data and Google search results
 def generate_ranking_paragraph(college_name, college_data, google_ranking):
     files_found_in = len(college_data['Ranking Stream'].unique())
     paragraph = f"{college_name} has been ranked in {files_found_in} different ranking streams.\n"
@@ -91,6 +88,7 @@ def generate_ranking_paragraph(college_name, college_data, google_ranking):
                 paragraph += f"The rank remains unchanged at {current_rank} compared to last year."
     return paragraph
 
+# Generate the graph for the selected college
 def display_graph_for_college(college_data, college_name, watermark_text=""):
     fig = px.bar(
         college_data,
@@ -115,6 +113,7 @@ def display_graph_for_college(college_data, college_name, watermark_text=""):
     graph_bytes.seek(0)
     return graph_bytes
 
+# Main function for the Streamlit app
 def main():
     st.title("College Ranking Analyzer")
     uploaded_files = st.file_uploader("Upload Excel files", type=["xlsx"], accept_multiple_files=True)
@@ -147,7 +146,14 @@ def main():
 
                 # Create and Download Word Report
                 word_file = create_word_report(selected_college, summary_paragraph, college_data[['Ranking Stream', 'Rank', 'City', 'State']], graph_bytes)
-                st.download_button(label="Download Report as Word Document", data=word_file, file_name=f"{selected_college}_Ranking_Report.docx")
+                
+                # Add a download button for the Word document
+                st.download_button(
+                    label="Download Report as Word Document",
+                    data=word_file,
+                    file_name=f"{selected_college}_Ranking_Report.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
 
         elif ranking_type == 'Stream+City-wise':
             ranking_streams = all_data['Ranking Stream'].dropna().unique()
@@ -158,6 +164,25 @@ def main():
                 stream_city_data = all_data[(all_data['Ranking Stream'] == selected_stream) & (all_data['City'] == selected_city)]
                 st.write(stream_city_data[['College Name', 'Rank', 'City', 'State']].sort_values(by='Rank'))
 
+                # Generate a simple summary paragraph
+                city_summary = f"Overview of all colleges in {selected_city} for stream '{selected_stream}'."
+                st.write(city_summary)
+
+                # Display Graph for colleges in the selected city and stream
+                watermark_text = "Your Watermark"
+                graph_bytes = display_graph_for_college(stream_city_data, selected_city, watermark_text)
+
+                # Create and Download Word Report
+                word_file = create_word_report(f"{selected_city} - {selected_stream}", city_summary, stream_city_data[['College Name', 'Rank', 'City', 'State']], graph_bytes)
+                
+                # Add a download button for the Word document
+                st.download_button(
+                    label="Download Report as Word Document",
+                    data=word_file,
+                    file_name=f"{selected_city}_{selected_stream}_Ranking_Report.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+
         elif ranking_type == 'Stream+State-wise':
             ranking_streams = all_data['Ranking Stream'].dropna().unique()
             selected_stream = st.selectbox('Select Ranking Stream', ranking_streams)
@@ -167,6 +192,25 @@ def main():
                 stream_state_data = all_data[(all_data['Ranking Stream'] == selected_stream) & (all_data['State'] == selected_state)]
                 st.write(stream_state_data[['College Name', 'Rank', 'City', 'State']].sort_values(by='Rank'))
 
+                # Generate a simple summary paragraph
+                state_summary = f"Overview of all colleges in {selected_state} for stream '{selected_stream}'."
+                st.write(state_summary)
+
+                # Display Graph for colleges in the selected state and stream
+                watermark_text = "Your Watermark"
+                graph_bytes = display_graph_for_college(stream_state_data, selected_state, watermark_text)
+
+                # Create and Download Word Report
+                word_file = create_word_report(f"{selected_state} - {selected_stream}", state_summary, stream_state_data[['College Name', 'Rank', 'City', 'State']], graph_bytes)
+                
+                # Add a download button for the Word document
+                st.download_button(
+                    label="Download Report as Word Document",
+                    data=word_file,
+                    file_name=f"{selected_state}_{selected_stream}_Ranking_Report.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+
         elif ranking_type == 'All Colleges in a City':
             cities = all_data['City'].dropna().unique()
             selected_city = st.selectbox('Select City', cities)
@@ -175,6 +219,21 @@ def main():
                 st.write(city_data[['College Name', 'Rank', 'Ranking Stream', 'State']].sort_values(by='Rank'))
                 st.write(f"Overview of all colleges in {selected_city}.")
 
+                # Display Graph for colleges in the selected city
+                watermark_text = "Your Watermark"
+                graph_bytes = display_graph_for_college(city_data, selected_city, watermark_text)
+
+                # Create and Download Word Report
+                word_file = create_word_report(f"All Colleges in {selected_city}", f"Overview of all colleges in {selected_city}.", city_data[['College Name', 'Rank', 'Ranking Stream', 'State']], graph_bytes)
+                
+                # Add a download button for the Word document
+                st.download_button(
+                    label="Download Report as Word Document",
+                    data=word_file,
+                    file_name=f"All_Colleges_in_{selected_city}_Ranking_Report.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
+
         elif ranking_type == 'All Colleges in a State':
             states = all_data['State'].dropna().unique()
             selected_state = st.selectbox('Select State', states)
@@ -182,6 +241,21 @@ def main():
                 state_data = all_data[all_data['State'] == selected_state]
                 st.write(state_data[['College Name', 'Rank', 'Ranking Stream', 'City']].sort_values(by='Rank'))
                 st.write(f"Overview of all colleges in {selected_state}.")
+
+                # Display Graph for colleges in the selected state
+                watermark_text = "Your Watermark"
+                graph_bytes = display_graph_for_college(state_data, selected_state, watermark_text)
+
+                # Create and Download Word Report
+                word_file = create_word_report(f"All Colleges in {selected_state}", f"Overview of all colleges in {selected_state}.", state_data[['College Name', 'Rank', 'Ranking Stream', 'City']], graph_bytes)
+                
+                # Add a download button for the Word document
+                st.download_button(
+                    label="Download Report as Word Document",
+                    data=word_file,
+                    file_name=f"All_Colleges_in_{selected_state}_Ranking_Report.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
 
 if __name__ == "__main__":
     main()
