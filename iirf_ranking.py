@@ -141,7 +141,7 @@ def main():
                 st.write(summary_paragraph)
 
                 # Display Graph for the selected college
-                watermark_text = "Your Watermark"
+                watermark_text = "collegedekho"
                 graph_bytes = display_graph_for_college(college_data, selected_college, watermark_text)
 
                 # Create and Download Word Report
@@ -169,7 +169,7 @@ def main():
                 st.write(city_summary)
 
                 # Display Graph for colleges in the selected city and stream
-                watermark_text = "Your Watermark"
+                watermark_text = "collegedekho"
                 graph_bytes = display_graph_for_college(stream_city_data, selected_city, watermark_text)
 
                 # Create and Download Word Report
@@ -197,7 +197,7 @@ def main():
                 st.write(state_summary)
 
                 # Display Graph for colleges in the selected state and stream
-                watermark_text = "Your Watermark"
+                watermark_text = "collegedekho"
                 graph_bytes = display_graph_for_college(stream_state_data, selected_state, watermark_text)
 
                 # Create and Download Word Report
@@ -220,7 +220,7 @@ def main():
                 st.write(f"Overview of all colleges in {selected_city}.")
 
                 # Display Graph for colleges in the selected city
-                watermark_text = "Your Watermark"
+                watermark_text = "collegedekho"
                 graph_bytes = display_graph_for_college(city_data, selected_city, watermark_text)
 
                 # Create and Download Word Report
