@@ -243,7 +243,7 @@ def main():
                 st.write(f"Overview of all colleges in {selected_state}.")
 
                 # Display Graph for colleges in the selected state
-                watermark_text = "Your Watermark"
+                watermark_text = "collegedekho"
                 graph_bytes = display_graph_for_college(state_data, selected_state, watermark_text)
 
                 # Create and Download Word Report
