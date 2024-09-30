@@ -34,7 +34,7 @@ def load_and_process_excel(file):
     df.columns = [f'Unnamed: {i}' if pd.isna(col) else col for i, col in enumerate(df.columns)]
     
     # Handle duplicate column names by appending a suffix to each duplicate
-    df.columns = pd.io.parsers.ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
+    df = df.rename(columns=lambda x: x if df.columns.tolist().count(x) == 1 else f"{x}_{df.columns.tolist().index(x)}")
     
     # Extract columns D to L (which correspond to index 3 to 11)
     df = df.iloc[:, 3:12]  # Index is 0-based, so columns D to L are 3 to 11
@@ -77,4 +77,3 @@ if uploaded_file:
             college_data = processed_df[processed_df[name_column] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
-
