@@ -76,12 +76,17 @@ if uploaded_files:
 
     if selected_sheets:
         # If sheets have been selected, show the example of the first file's selected sheet
-        df_example = pd.read_excel(uploaded_files[0], sheet_name=selected_sheets[0], header=1)
-        # Normalize column names in the preview DataFrame
-        df_example.columns = df_example.columns.str.strip().str.lower()
-        st.write(f"Preview of the first file's '{selected_sheets[0]}' sheet (normalized column names):")
-        st.dataframe(df_example)
-
+        try:
+            df_example = pd.read_excel(uploaded_files[0], sheet_name=selected_sheets[0], header=1)
+            # Normalize column names in the preview DataFrame
+            df_example.columns = df_example.columns.str.strip().str.lower()
+            st.write(f"Preview of the first file's '{selected_sheets[0]}' sheet (normalized column names):")
+            
+            # Ensure only valid columns are displayed
+            st.dataframe(df_example.select_dtypes(include=[int, float, object]))  # Show only valid types
+        except Exception as e:
+            st.error(f"Error displaying preview for {uploaded_files[0].name}: {e}")
+        
         # Let the user select the headers they want to include in the final merged output
         selected_headers = st.multiselect("Select the columns to include", df_example.columns.tolist())
 
