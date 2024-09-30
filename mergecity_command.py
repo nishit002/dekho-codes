@@ -27,8 +27,11 @@ def merge_files(files, selected_sheets, selected_headers):
             # Debug: Check headers in each file
             st.write(f"Headers in {file.name}: {df.columns.tolist()}")
 
-            # Get the selected headers (make sure they exist in the current file's sheet)
-            available_headers = [col for col in df.columns if col in [header.lower() for header in selected_headers]]
+            # Get the selected headers (ensure they exist in the current file's sheet and are valid strings)
+            available_headers = [
+                col for col in df.columns 
+                if col in [header.lower() for header in selected_headers if isinstance(header, str)]
+            ]
             if not available_headers:
                 st.warning(f"No matching columns found in {file.name} for selected headers.")
                 continue
