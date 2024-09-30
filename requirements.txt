@@ -7,3 +7,4 @@ kaleido
 openpyxl
 beautifulsoup4
 requests
+spellchecker
