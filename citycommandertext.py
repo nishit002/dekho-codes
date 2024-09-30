@@ -30,7 +30,7 @@ def correct_text(text):
 # Function to load the predefined Excel file from a local path or URL
 @st.cache_data
 def load_predefined_excel():
-    file_url = "https://raw.githubusercontent.com/your-github-username/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
+    file_url = "https://raw.githubusercontent.com/nishit002/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
     
     try:
         df = pd.read_excel(file_url, header=0)
