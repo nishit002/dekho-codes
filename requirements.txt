@@ -13,3 +13,4 @@ pandas
 fuzzywuzzy[speedup]
 scikit-learn
 python-Levenshtein
+pygithub
