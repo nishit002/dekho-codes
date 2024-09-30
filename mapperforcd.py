@@ -9,7 +9,7 @@ API_KEY = 'e95bf84d54ed60c1a0a67972df2ed85f608a33b3'
 SEARCH_ENGINE_ID = 'e5ff9bd23eba146d2'
 
 # GitHub credentials (replace with your own GitHub token and repo details)
-GITHUB_TOKEN = "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"  # Replace with your GitHub personal access token
+GITHUB_TOKEN = "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"  # Replace with your GitHub personal access token
 REPO_NAME = "your-username/your-repo-name"  # Replace with your GitHub repo name (username/repo)
 
 # Initialize GitHub object using your token
