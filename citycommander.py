@@ -4,10 +4,6 @@ import docx
 from io import BytesIO
 import re
 import base64
-from spellchecker import SpellChecker
-
-# Initialize SpellChecker
-spell = SpellChecker()
 
 # Function to convert text to proper case, ignoring abbreviations
 def proper_case_except_abbreviations(text):
@@ -18,19 +14,10 @@ def proper_case_except_abbreviations(text):
             return word.capitalize()  # Capitalize only non-abbreviation words
     return ' '.join([capitalize_word(word) for word in re.split(r'(\W+)', text)])
 
-# Function to correct spelling mistakes using pyspellchecker and clean text
-def correct_text(text):
-    if isinstance(text, str):
-        words = text.split()
-        corrected_words = [spell.correction(word) if word not in spell else word for word in words]
-        corrected_text = ' '.join(corrected_words)
-        return proper_case_except_abbreviations(corrected_text)
-    return text
-
 # Function to load the predefined Excel file from a local path or URL
 @st.cache_data
 def load_predefined_excel():
-    file_url = "https://raw.githubusercontent.com/nishit002/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
+    file_url = "https://raw.githubusercontent.com/your-github-username/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
     
     try:
         df = pd.read_excel(file_url, header=0)
@@ -66,7 +53,7 @@ def create_transposed_html_table(college_data):
     return html_table
 
 # Streamlit app
-st.title('College Information Table Generator with Faster Spell Correction')
+st.title('College Information Table Generator')
 
 # Load the predefined Excel file automatically
 st.write("Loading predefined Excel file...")
@@ -86,17 +73,15 @@ if processed_df is not None:
         
         st.dataframe(college_data.T)
         
-        if st.button('Correct Spelling and Grammar'):
-            college_data = college_data.applymap(lambda x: correct_text(x) if isinstance(x, str) else x)
-            st.write("Corrected Data:")
-            st.dataframe(college_data.T)
-        
+        # Option to download the transposed college data as a Word file
         buffer_word = create_transposed_word_table(college_data)
         st.download_button(label="Download College Data as Word", data=buffer_word, file_name=f"{selected_college}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         
+        # Option to download the transposed college data as HTML
         html_table = create_transposed_html_table(college_data)
         b64_html = base64.b64encode(html_table.encode()).decode()
         href_html = f'<a href="data:text/html;base64,{b64_html}" download="{selected_college}.html">Download College Data as HTML</a>'
         st.markdown(href_html, unsafe_allow_html=True)
         
         st.text_area("HTML Table (Copy this):", value=html_table, height=200)
+
