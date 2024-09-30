@@ -36,6 +36,9 @@ def load_and_process_excel(file):
     # Rename the columns based on the field mapping
     df.columns = [field_mapping.get(col, col) for col in df.columns]
     
+    # Convert all columns to string to avoid pyarrow conversion issues
+    df = df.astype(str)
+    
     return df
 
 # Streamlit app
@@ -61,4 +64,3 @@ if uploaded_file:
             college_data = processed_df[processed_df["Name"] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
-
