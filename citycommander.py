@@ -6,14 +6,11 @@ def load_and_process_excel(file):
     # Load the Excel file with the first row as header
     df = pd.read_excel(file, header=0)
     
-    # Extract College ID (Column C) and College Name (Column E)
-    df = df.iloc[:, [2, 4]]  # Column C is index 2, Column E is index 4
+    # Extract College ID (Column C) and College Name (Column E) along with all columns
+    df['College Display'] = df.iloc[:, 4] + " - ID - " + df.iloc[:, 2].astype(str)  # Combine College Name and ID
     
     # Drop rows where College Name is NaN
-    df = df.dropna(subset=[df.columns[1]])  # Drop rows with NaN in the College Name (Column E)
-    
-    # Convert College ID and College Name to strings and format as "College Name - ID - College ID"
-    df['College Display'] = df[df.columns[1]] + " - ID - " + df[df.columns[0]].astype(str)
+    df = df.dropna(subset=[df.columns[4]])  # Drop rows with NaN in the College Name (Column E)
     
     return df
 
@@ -34,6 +31,8 @@ if uploaded_file:
     # Filter the data for the selected college
     if selected_college:
         st.write(f"Details for {selected_college}:")
-        # Displaying the corresponding row with college details
-        college_data = processed_df[processed_df['College Display'] == selected_college]
+        # Filter based on selected college and drop the "College Display" column for output clarity
+        college_data = processed_df[processed_df['College Display'] == selected_college].drop(columns=['College Display'])
+        
+        # Display all data related to the selected college
         st.dataframe(college_data.T)  # Transpose for better readability
