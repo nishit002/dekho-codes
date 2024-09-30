@@ -27,11 +27,8 @@ field_mapping = {
 
 # Function to load and process the Excel file
 def load_and_process_excel(file):
-    df = pd.read_excel(file)  # Read the uploaded file
-    
-    # Assume the first row is the header
-    df.columns = df.iloc[0]  # Set the first row as the header
-    df = df.drop(0)  # Drop the first row, which is now the header
+    # Read the Excel file and use the first row as the header
+    df = pd.read_excel(file, header=0)  # `header=0` ensures the first row is used as the header
     
     # Rename the columns based on the field mapping
     df.columns = [field_mapping.get(col, col) for col in df.columns]
