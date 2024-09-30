@@ -60,7 +60,7 @@ def create_transposed_html_table(college_data):
     return html_table
 
 # Streamlit app
-st.title('College Information Table Generator with Transposed Table and Download Options')
+st.title('CityCommander Data to Template Generator Collegedekho')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
