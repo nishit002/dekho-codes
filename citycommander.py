@@ -36,9 +36,6 @@ def load_and_process_excel(file):
     # Count the number of filled (non-empty) fields for each college
     df['Filled Fields Count'] = df.notna().sum(axis=1) - 1  # Subtract 1 to exclude the college name column
     
-    # Apply spelling correction and proper casing to the data
-    df = df.applymap(lambda x: correct_text(x) if isinstance(x, str) else x)
-    
     return df
 
 # Function to create a Word document with a transposed table (with borders)
@@ -68,13 +65,13 @@ def create_transposed_html_table(college_data):
     return html_table
 
 # Streamlit app
-st.title('College Information Table Generator with Cleaned and Corrected Data')
+st.title('College Information Table Generator with On-Demand Text Correction')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
 
 if uploaded_file:
-    # Load and process the Excel file with text correction
+    # Load and process the Excel file
     processed_df = load_and_process_excel(uploaded_file)
     
     # Create a display list combining college name and the filled field count
@@ -94,13 +91,17 @@ if uploaded_file:
         # Filter out empty columns (only show columns where data is available)
         college_data = college_data.loc[:, college_data.notna().any()]
         
-        # Display only the column names and their corresponding corrected values
-        for col in college_data.columns:
-            st.write(f"**{col}**")
-            st.write(college_data[col].values[0])
+        # Display the original data in transposed format
+        st.dataframe(college_data.T)
         
-        # Transpose the DataFrame for display
-        st.dataframe(college_data.T)  # Display in transposed format for readability
+        # Add a button to correct spelling and grammar
+        if st.button('Correct Spelling and Grammar'):
+            # Apply text correction only to the displayed data
+            college_data = college_data.applymap(lambda x: correct_text(x) if isinstance(x, str) else x)
+            
+            # Display corrected data
+            st.write("Corrected Data:")
+            st.dataframe(college_data.T)
         
         # Option to download the transposed and corrected college data as a Word file
         buffer_word = create_transposed_word_table(college_data)
@@ -114,4 +115,3 @@ if uploaded_file:
         
         # Option to copy the transposed table to clipboard (HTML format)
         st.text_area("HTML Table (Copy this):", value=html_table, height=200)
-
