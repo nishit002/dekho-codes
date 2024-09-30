@@ -10,7 +10,7 @@ SEARCH_ENGINE_ID = 'e5ff9bd23eba146d2'
 
 # GitHub credentials (replace with your own GitHub token and repo details)
 GITHUB_TOKEN = "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"  # Replace with your GitHub personal access token
-REPO_NAME = "your-username/your-repo-name"  # Replace with your GitHub repo name (username/repo)
+REPO_NAME = "nishit002/dekho-codes"  # Replace with your GitHub repo name (username/repo)
 
 # Initialize GitHub object using your token
 g = Github(GITHUB_TOKEN)
