@@ -25,10 +25,16 @@ field_mapping = {
     "Top Companies for different courses": "Top Companies"
 }
 
-# Function to load the Excel file and extract columns D to L (3 to 11 index)
+# Function to load the Excel file, handle NaN and duplicate columns
 def load_and_process_excel(file):
-    # Load the Excel file and set the first row as the header
+    # Load the Excel file with the first row as header
     df = pd.read_excel(file, header=0)
+    
+    # Handle NaN or unnamed column names by replacing them with 'Unnamed: X'
+    df.columns = [f'Unnamed: {i}' if pd.isna(col) else col for i, col in enumerate(df.columns)]
+    
+    # Handle duplicate column names by appending a suffix to each duplicate
+    df.columns = pd.io.parsers.ParserBase({'names': df.columns})._maybe_dedup_names(df.columns)
     
     # Extract columns D to L (which correspond to index 3 to 11)
     df = df.iloc[:, 3:12]  # Index is 0-based, so columns D to L are 3 to 11
@@ -42,13 +48,13 @@ def load_and_process_excel(file):
     return df
 
 # Streamlit app
-st.title('College Information Table Generator (Columns D to L)')
+st.title('Flexible College Information Table Generator (Handle Duplicates)')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
 
 if uploaded_file:
-    # Load and process the Excel file (using only columns D to L)
+    # Load and process the Excel file
     processed_df = load_and_process_excel(uploaded_file)
     
     # Display the processed dataframe
@@ -71,3 +77,4 @@ if uploaded_file:
             college_data = processed_df[processed_df[name_column] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
+
