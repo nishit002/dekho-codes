@@ -45,10 +45,13 @@ def load_and_process_excel(file):
     # Convert all columns to string to avoid pyarrow conversion issues
     df = df.astype(str)
     
+    # Transpose the dataframe to make rows into columns
+    df = df.T
+    
     return df
 
 # Streamlit app
-st.title('Flexible College Information Table Generator (Handle Duplicates)')
+st.title('Flexible College Information Table Generator (Transposed Output)')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
@@ -57,8 +60,8 @@ if uploaded_file:
     # Load and process the Excel file
     processed_df = load_and_process_excel(uploaded_file)
     
-    # Display the processed dataframe
-    st.write("Processed College Data (Columns D to L):")
+    # Display the transposed dataframe
+    st.write("Processed College Data (Columns D to L, Transposed):")
     st.dataframe(processed_df)
     
     # Let the user manually select the column that contains the college name
@@ -77,3 +80,4 @@ if uploaded_file:
             college_data = processed_df[processed_df[name_column] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
+
