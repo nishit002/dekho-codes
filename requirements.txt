@@ -9,4 +9,3 @@ beautifulsoup4
 requests
 googlesearch-python
 textblob
-SpellChecker
