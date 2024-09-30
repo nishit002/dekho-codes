@@ -25,17 +25,12 @@ field_mapping = {
     "Top Companies for different courses": "Top Companies"
 }
 
-# Function to load and process the Excel file
-def load_and_process_excel(file):
-    # Read the Excel file and use the first row as the header
-    df = pd.read_excel(file, header=0)  # `header=0` ensures the first row is used as the header
+# Function to load and preview the Excel file
+def load_and_preview_excel(file):
+    # Read the Excel file without assuming any headers
+    df = pd.read_excel(file, header=None)
     
-    # Rename the columns based on the field mapping
-    df.columns = [field_mapping.get(col, col) for col in df.columns]
-    
-    # Convert all columns to string to avoid pyarrow conversion issues
-    df = df.astype(str)
-    
+    # Display the first few rows to understand the structure
     return df
 
 # Streamlit app
@@ -45,19 +40,43 @@ st.title('Flexible College Information Table Generator')
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
 
 if uploaded_file:
-    # Load and process the Excel file
-    processed_df = load_and_process_excel(uploaded_file)
+    # Load and preview the Excel file
+    raw_df = load_and_preview_excel(uploaded_file)
+    
+    # Display the first 5 rows of the data to preview
+    st.write("Preview of the uploaded file:")
+    st.dataframe(raw_df.head(10))  # Show the first 10 rows for context
+    
+    # Let the user select which row contains the headers (e.g., first, second row, etc.)
+    header_row = st.number_input("Select the row number to use as headers (0-based index)", min_value=0, max_value=len(raw_df)-1, value=0)
+    
+    # Reload the dataframe with the selected header row
+    df = pd.read_excel(uploaded_file, header=header_row)
+    
+    # Let the user manually select the column that contains the college name
+    st.write("Columns found in the dataset:")
+    columns = df.columns.tolist()
+    st.write(columns)  # Display the column names
+    
+    name_column = st.selectbox("Select the column for college names", columns)
+    
+    # Rename the columns based on the field mapping if applicable
+    df.columns = [field_mapping.get(col, col) for col in df.columns]
+    
+    # Convert all columns to string to avoid pyarrow conversion issues
+    df = df.astype(str)
     
     # Display the processed dataframe
     st.write("Processed College Data:")
-    st.dataframe(processed_df)
+    st.dataframe(df)
     
     # Optionally, allow the user to select a specific college for detailed view
-    if "Name" in processed_df.columns:
-        college_names = processed_df["Name"].dropna().unique()
+    if name_column in df.columns:
+        college_names = df[name_column].dropna().unique()
         selected_college = st.selectbox("Select a college", college_names)
         
         if selected_college:
-            college_data = processed_df[processed_df["Name"] == selected_college]
+            college_data = df[df[name_column] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
+
