@@ -26,7 +26,7 @@ def correct_text(text):
 @st.cache_data
 def load_predefined_excel():
     # Load the Excel file from a local path or URL (your GitHub file path)
-    file_url = "https://raw.githubusercontent.com/your-github-username/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
+    file_url = "https://raw.githubusercontent.com/nishit002/dekho-codes/main/ALL_CCM_ALL_Template.xlsx"
     df = pd.read_excel(file_url, header=0)
     
     # College Name is in the first column (Column 0)
