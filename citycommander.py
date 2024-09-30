@@ -25,40 +25,13 @@ field_mapping = {
     "Top Companies for different courses": "Top Companies"
 }
 
-# Function to load and preview the Excel file
-def load_and_preview_excel(file):
-    # Read the Excel file without assuming any headers
-    df = pd.read_excel(file, header=None)
+# Function to load the Excel file and extract columns D to L (3 to 11 index)
+def load_and_process_excel(file):
+    # Load the Excel file and set the first row as the header
+    df = pd.read_excel(file, header=0)
     
-    # Display the first few rows to understand the structure
-    return df
-
-# Streamlit app
-st.title('Flexible College Information Table Generator')
-
-# Upload the Excel file
-uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
-
-if uploaded_file:
-    # Load and preview the Excel file
-    raw_df = load_and_preview_excel(uploaded_file)
-    
-    # Display the first 5 rows of the data to preview
-    st.write("Preview of the uploaded file:")
-    st.dataframe(raw_df.head(10))  # Show the first 10 rows for context
-    
-    # Let the user select which row contains the headers (e.g., first, second row, etc.)
-    header_row = st.number_input("Select the row number to use as headers (0-based index)", min_value=0, max_value=len(raw_df)-1, value=0)
-    
-    # Reload the dataframe with the selected header row
-    df = pd.read_excel(uploaded_file, header=header_row)
-    
-    # Let the user manually select the column that contains the college name
-    st.write("Columns found in the dataset:")
-    columns = df.columns.tolist()
-    st.write(columns)  # Display the column names
-    
-    name_column = st.selectbox("Select the column for college names", columns)
+    # Extract columns D to L (which correspond to index 3 to 11)
+    df = df.iloc[:, 3:12]  # Index is 0-based, so columns D to L are 3 to 11
     
     # Rename the columns based on the field mapping if applicable
     df.columns = [field_mapping.get(col, col) for col in df.columns]
@@ -66,17 +39,35 @@ if uploaded_file:
     # Convert all columns to string to avoid pyarrow conversion issues
     df = df.astype(str)
     
+    return df
+
+# Streamlit app
+st.title('College Information Table Generator (Columns D to L)')
+
+# Upload the Excel file
+uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
+
+if uploaded_file:
+    # Load and process the Excel file (using only columns D to L)
+    processed_df = load_and_process_excel(uploaded_file)
+    
     # Display the processed dataframe
-    st.write("Processed College Data:")
-    st.dataframe(df)
+    st.write("Processed College Data (Columns D to L):")
+    st.dataframe(processed_df)
+    
+    # Let the user manually select the column that contains the college name
+    st.write("Columns found in the dataset:")
+    columns = processed_df.columns.tolist()
+    st.write(columns)  # Display the column names
+    
+    name_column = st.selectbox("Select the column for college names", columns)
     
     # Optionally, allow the user to select a specific college for detailed view
-    if name_column in df.columns:
-        college_names = df[name_column].dropna().unique()
+    if name_column in processed_df.columns:
+        college_names = processed_df[name_column].dropna().unique()
         selected_college = st.selectbox("Select a college", college_names)
         
         if selected_college:
-            college_data = df[df[name_column] == selected_college]
+            college_data = processed_df[processed_df[name_column] == selected_college]
             st.write(f"Details for {selected_college}:")
             st.dataframe(college_data)
-
