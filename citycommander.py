@@ -3,6 +3,7 @@ import pandas as pd
 import docx
 from io import BytesIO
 import re
+import base64
 
 # Function to convert text to proper case, ignoring abbreviations
 def proper_case_except_abbreviations(text):
@@ -32,14 +33,23 @@ def load_and_process_excel(file):
     
     return df
 
-# Function to download college data in Word format
-def download_word(college_data):
+# Function to create a Word document with a table (with borders)
+def create_word_table(college_data):
     doc = docx.Document()
     doc.add_heading('College Details', 0)
     
-    for col in college_data.columns:
-        doc.add_heading(f'{col} ({college_data[col].dtype})', level=1)
-        doc.add_paragraph(str(college_data[col].values[0]))
+    table = doc.add_table(rows=1, cols=len(college_data.columns))
+    table.style = 'Table Grid'  # Add borders to the table
+    
+    # Add headers
+    hdr_cells = table.rows[0].cells
+    for i, col in enumerate(college_data.columns):
+        hdr_cells[i].text = col
+    
+    # Add the row of data
+    row_cells = table.add_row().cells
+    for i, col in enumerate(college_data.columns):
+        row_cells[i].text = str(college_data[col].values[0])
     
     # Create a BytesIO object and save the document into it
     buffer = BytesIO()
@@ -48,8 +58,13 @@ def download_word(college_data):
     
     return buffer
 
+# Function to create an HTML table
+def create_html_table(college_data):
+    html_table = college_data.to_html(index=False, border=1)
+    return html_table
+
 # Streamlit app
-st.title('College Information Table Generator with Download')
+st.title('College Information Table Generator with Download Options')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
@@ -75,14 +90,24 @@ if uploaded_file:
         # Filter out empty columns (only show columns where data is available)
         college_data = college_data.loc[:, college_data.notna().any()]
         
-        # Display column names, types, and proper case details
+        # Display only the column names and their corresponding values (no data types)
         for col in college_data.columns:
-            st.write(f"**{col}** (Type: {college_data[col].dtype})")
+            st.write(f"**{col}**")
             st.write(college_data[col].values[0])
         
         # Transpose the DataFrame for display
         st.dataframe(college_data.T)  # Display in transposed format for readability
         
         # Option to download the college data as a Word file
-        buffer = download_word(college_data)
-        st.download_button(label="Download College Data as Word", data=buffer, file_name=f"{selected_college}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        buffer_word = create_word_table(college_data)
+        st.download_button(label="Download College Data as Word", data=buffer_word, file_name=f"{selected_college}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        
+        # Option to download the college data as HTML
+        html_table = create_html_table(college_data)
+        b64_html = base64.b64encode(html_table.encode()).decode()  # Encode HTML to base64
+        href_html = f'<a href="data:text/html;base64,{b64_html}" download="{selected_college}.html">Download College Data as HTML</a>'
+        st.markdown(href_html, unsafe_allow_html=True)
+        
+        # Option to copy the table to clipboard (HTML format)
+        st.text_area("HTML Table (Copy this):", value=html_table, height=200)
+
