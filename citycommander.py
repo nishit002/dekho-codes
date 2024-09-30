@@ -6,11 +6,13 @@ def load_and_process_excel(file):
     # Load the Excel file with the first row as header
     df = pd.read_excel(file, header=0)
     
-    # Extract College ID (Column C) and College Name (Column E) along with all columns
-    df['College Display'] = df.iloc[:, 4] + " - ID - " + df.iloc[:, 2].astype(str)  # Combine College Name and ID
+    # Ensure College ID (Column C) and College Name (Column E) are strings, and drop rows where College Name is NaN
+    df['College ID'] = df.iloc[:, 2].astype(str)
+    df['College Name'] = df.iloc[:, 4].astype(str)
+    df = df.dropna(subset=['College Name'])  # Drop rows with NaN in College Name
     
-    # Drop rows where College Name is NaN
-    df = df.dropna(subset=[df.columns[4]])  # Drop rows with NaN in the College Name (Column E)
+    # Combine College Name and ID into a new column for display
+    df['College Display'] = df['College Name'] + " - ID - " + df['College ID']
     
     return df
 
