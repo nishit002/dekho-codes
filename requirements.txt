@@ -7,5 +7,3 @@ kaleido
 openpyxl
 beautifulsoup4
 requests
-googlesearch-python
-spellchecker
