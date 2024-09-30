@@ -1,18 +1,19 @@
 import streamlit as st
 import pandas as pd
 
-# Function to load the Excel file and process College Name and College ID
+# Function to load the Excel file and process College Name with filled field count
 def load_and_process_excel(file):
     # Load the Excel file with the first row as header
     df = pd.read_excel(file, header=0)
     
-    # Ensure College ID (Column C) and College Name (Column E) are strings, and drop rows where College Name is NaN
-    df['College ID'] = df.iloc[:, 2].astype(str)
-    df['College Name'] = df.iloc[:, 4].astype(str)
-    df = df.dropna(subset=['College Name'])  # Drop rows with NaN in College Name
+    # College Name is in the first column (Column 0)
+    df['College Name'] = df.iloc[:, 0].astype(str)
     
-    # Combine College Name and ID into a new column for display
-    df['College Display'] = df['College Name'] + " - ID - " + df['College ID']
+    # Drop rows where College Name is NaN
+    df = df.dropna(subset=['College Name'])
+    
+    # Count the number of filled (non-empty) fields for each college
+    df['Filled Fields Count'] = df.notna().sum(axis=1) - 1  # Subtract 1 to exclude the college name column
     
     return df
 
@@ -26,6 +27,9 @@ if uploaded_file:
     # Load and process the Excel file
     processed_df = load_and_process_excel(uploaded_file)
     
+    # Create a display list combining college name and the filled field count
+    processed_df['College Display'] = processed_df['College Name'] + " (Fields Filled: " + processed_df['Filled Fields Count'].astype(str) + ")"
+    
     # Let the user manually select the college from the formatted "College Display" column
     college_list = processed_df['College Display'].tolist()
     selected_college = st.selectbox("Select a college", college_list)
@@ -34,15 +38,11 @@ if uploaded_file:
     if selected_college:
         st.write(f"Details for {selected_college}:")
         
-        # Filter based on selected college and drop unwanted columns
-        unwanted_columns = [
-            'Timestamp', 
-            'Please enter the college ID', 
-            'College is Available on CollegeDekho website ?,  If yes: Please share the link Else: Please write No'
-        ]
+        # Get the college row for the selected college name
+        college_data = processed_df[processed_df['College Display'] == selected_college].drop(columns=['College Display', 'Filled Fields Count'])
         
-        # Filter based on selected college and drop unwanted columns
-        college_data = processed_df[processed_df['College Display'] == selected_college].drop(columns=['College Display'] + unwanted_columns, errors='ignore')
+        # Filter out empty columns (only show columns where data is available)
+        college_data = college_data.loc[:, college_data.notna().any()]
         
-        # Display all data related to the selected college
+        # Display the filtered college data (show only rows where data is available)
         st.dataframe(college_data.T)  # Transpose for better readability
