@@ -31,8 +31,16 @@ if uploaded_file:
     # Filter the data for the selected college
     if selected_college:
         st.write(f"Details for {selected_college}:")
-        # Filter based on selected college and drop the "College Display" column for output clarity
-        college_data = processed_df[processed_df['College Display'] == selected_college].drop(columns=['College Display'])
+        
+        # Filter based on selected college and drop unwanted columns
+        unwanted_columns = [
+            'Timestamp', 
+            'Please enter the college ID', 
+            'College is Available on CollegeDekho website ?,  If yes: Please share the link Else: Please write No'
+        ]
+        
+        # Filter based on selected college and drop unwanted columns
+        college_data = processed_df[processed_df['College Display'] == selected_college].drop(columns=['College Display'] + unwanted_columns, errors='ignore')
         
         # Display all data related to the selected college
         st.dataframe(college_data.T)  # Transpose for better readability
