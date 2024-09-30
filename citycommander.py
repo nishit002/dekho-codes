@@ -36,22 +36,16 @@ def load_and_process_excel(file):
     # Handle duplicate column names by appending a suffix to each duplicate
     df = df.rename(columns=lambda x: x if df.columns.tolist().count(x) == 1 else f"{x}_{df.columns.tolist().index(x)}")
     
-    # Extract columns D to L (which correspond to index 3 to 11)
-    df = df.iloc[:, 3:12]  # Index is 0-based, so columns D to L are 3 to 11
+    # Extract columns C, D, and E (which correspond to index 2, 3, and 4)
+    df = df.iloc[:, [2, 3, 4]]  # Extract College ID (C), College Name (E), and relevant columns
     
     # Rename the columns based on the field mapping if applicable
-    df.columns = [field_mapping.get(col, col) for col in df.columns]
-    
-    # Convert all columns to string to avoid pyarrow conversion issues
-    df = df.astype(str)
-    
-    # Transpose the dataframe to make rows into columns
-    df = df.T
+    df.columns = ['College ID', 'College Name', 'Additional Info']
     
     return df
 
 # Streamlit app
-st.title('Flexible College Information Table Generator (Transposed Output)')
+st.title('Flexible College Information Table Generator (Select College)')
 
 # Upload the Excel file
 uploaded_file = st.file_uploader("Upload your Excel file", type="xlsx")
@@ -60,24 +54,21 @@ if uploaded_file:
     # Load and process the Excel file
     processed_df = load_and_process_excel(uploaded_file)
     
-    # Display the transposed dataframe
-    st.write("Processed College Data (Columns D to L, Transposed):")
-    st.dataframe(processed_df)
+    # Let the user manually select the college from the College Name column (Column E)
+    college_names = processed_df['College Name'].dropna().unique()
+    selected_college = st.selectbox("Select a college", college_names)
     
-    # Let the user manually select the column that contains the college name
-    st.write("Columns found in the dataset:")
-    columns = processed_df.columns.tolist()
-    st.write(columns)  # Display the column names
-    
-    name_column = st.selectbox("Select the column for college names", columns)
-    
-    # Optionally, allow the user to select a specific college for detailed view
-    if name_column in processed_df.columns:
-        college_names = processed_df[name_column].dropna().unique()
-        selected_college = st.selectbox("Select a college", college_names)
+    # Filter the data for the selected college
+    if selected_college:
+        college_data = processed_df[processed_df['College Name'] == selected_college]
         
-        if selected_college:
-            college_data = processed_df[processed_df[name_column] == selected_college]
-            st.write(f"Details for {selected_college}:")
-            st.dataframe(college_data)
+        # Append the College ID with College Name
+        college_data['College Display'] = college_data['College Name'] + " (ID: " + college_data['College ID'] + ")"
+        
+        # Transpose the DataFrame for better display
+        college_data = college_data.set_index('College Display').T
+        
+        # Display the transposed college data
+        st.write(f"Details for {selected_college}:")
+        st.dataframe(college_data)
 
