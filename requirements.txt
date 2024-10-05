@@ -17,3 +17,4 @@ serpapi
 streamlit
 google-search-results
 webdriver-manager
+selenium
