@@ -13,3 +13,6 @@ pandas
 fuzzywuzzy[speedup]
 scikit-learn
 python-Levenshtein
+serpapi
+streamlit
+google-search-results
