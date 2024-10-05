@@ -16,3 +16,4 @@ python-Levenshtein
 serpapi
 streamlit
 google-search-results
+webdriver-manager
