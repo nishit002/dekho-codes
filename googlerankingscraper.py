@@ -19,11 +19,13 @@ start_time = None
 def scrape_google_serp(keywords):
     global scraping_in_progress, results_file_path
 
-    # Set up Selenium WebDriver
+    # Set up Selenium WebDriver with Chromium
     options = webdriver.ChromeOptions()
+    options.binary_location = "/usr/bin/chromium-browser"  # Use Chromium instead of Google Chrome
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     data = []
@@ -34,12 +36,12 @@ def scrape_google_serp(keywords):
         search_box = driver.find_element("name", "q")
         search_box.clear()
         search_box.send_keys(keyword)
-        search_box.send_keys(u'\ue007')  # Press Enter
+        search_box.send_keys(u'\ue007')  # Press Enter (Google Search)
         time.sleep(2)  # Wait for the results page to load
 
         # Fetch results and analyze rankings for primary site and competitors
         search_results = driver.find_elements("css selector", 'div.g')
-        for idx, result in enumerate(search_results[:10]):
+        for idx, result in enumerate(search_results[:10]):  # Limit to top 10 results
             try:
                 title = result.find_element("tag name", 'h3').text
                 url = result.find_element("tag name", 'a').get_attribute('href')
