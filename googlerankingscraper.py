@@ -1,7 +1,7 @@
 import streamlit as st
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from webdriver_manager.firefox import GeckoDriverManager
 import pandas as pd
 import time
 import os
@@ -15,18 +15,15 @@ results_file_path = "serp_results.xlsx"
 scraping_in_progress = False
 start_time = None
 
-# Function to perform Google SERP scraping
+# Function to perform Google SERP scraping using Firefox and Geckodriver
 def scrape_google_serp(keywords):
     global scraping_in_progress, results_file_path
 
-    # Set up Selenium WebDriver with Chromium
-    options = webdriver.ChromeOptions()
-    options.binary_location = "/usr/bin/chromium-browser"  # Use Chromium instead of Google Chrome
+    # Set up Selenium WebDriver with Firefox
+    options = webdriver.FirefoxOptions()
     options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    
+    driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
 
     data = []
 
