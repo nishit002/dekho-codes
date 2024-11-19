@@ -17,7 +17,7 @@ def get_uule(latitude, longitude):
     return uule_encoded
 
 # Function to scrape Google SERP
-def scrape_keyword(keyword, primary_site, latitude, longitude):
+def scrape_keyword(keyword, primary_site, competitors, latitude, longitude):
     uule = get_uule(latitude, longitude)
     api_url = f'http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url=https://www.google.com/search?q={keyword}&gl=in&hl=en&uule={uule}&num=100&device=mobile'
     headers = {
@@ -34,12 +34,13 @@ def scrape_keyword(keyword, primary_site, latitude, longitude):
     return None
 
 # Function to extract ranking details
-def extract_ranking_from_html(html, primary_site):
+def extract_ranking_from_html(html, primary_site, competitors):
     soup = BeautifulSoup(html, 'html.parser')
     search_results = soup.find_all('div', class_='tF2Cxc')
     rank_counter = 0
     total_pixel_height = 0  # Approximate pixel height
     primary_rank = None
+    competitor_ranks = {comp: {'rank': None, 'page': None, 'pixel_rank': None} for comp in competitors}
 
     for result in search_results:
         link_element = result.find('a')
@@ -51,24 +52,29 @@ def extract_ranking_from_html(html, primary_site):
                 pixel_rank = total_pixel_height + 100  # Approximate height for each result
                 total_pixel_height += 100
 
-                if primary_site in link:
-                    primary_rank = {
-                        'rank': rank_counter,
-                        'page': page_number,
-                        'pixel_rank': pixel_rank,
-                        'url': link
-                    }
-                    break  # Stop after finding the primary site
-    return primary_rank
+                if primary_site in link and not primary_rank:
+                    primary_rank = {'rank': rank_counter, 'page': page_number, 'pixel_rank': pixel_rank, 'url': link}
+
+                for comp in competitors:
+                    if comp in link and not competitor_ranks[comp]['rank']:
+                        competitor_ranks[comp] = {
+                            'rank': rank_counter,
+                            'page': page_number,
+                            'pixel_rank': pixel_rank,
+                            'url': link
+                        }
+
+    return primary_rank, competitor_ranks
 
 # Streamlit App
 def main():
     st.title("Google SERP Ranking Scraper")
-    st.write("Upload an Excel file with keywords and specify the primary website to extract ranking details.")
+    st.write("Upload an Excel file with keywords and specify the primary website and competitors to extract ranking details.")
 
     # File uploader for keywords
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
     primary_site = st.text_input("Enter Primary Website (e.g., collegedekho.com)")
+    competitors_input = st.text_input("Enter Competitor Websites (comma-separated, e.g., getmyuni.com,shiksha.com)")
     latitude = st.number_input("Enter Latitude", value=28.4595)
     longitude = st.number_input("Enter Longitude", value=77.0266)
     max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=20, value=10)
@@ -80,6 +86,13 @@ def main():
                 st.error("Uploaded file must have a 'Keyword' column.")
                 return
 
+            # Parse competitors
+            competitors = [comp.strip() for comp in competitors_input.split(',') if comp.strip()]
+
+            if not competitors:
+                st.error("Please enter at least one competitor.")
+                return
+
             keywords = keywords_df['Keyword'].tolist()
             total_keywords = len(keywords)
             results = []
@@ -88,7 +101,7 @@ def main():
             # Scraping process
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
-                    executor.submit(scrape_keyword, keyword, primary_site, latitude, longitude): keyword
+                    executor.submit(scrape_keyword, keyword, primary_site, competitors, latitude, longitude): keyword
                     for keyword in keywords
                 }
 
@@ -96,15 +109,22 @@ def main():
                     keyword = futures[future]
                     html = future.result()
                     if html:
-                        ranking_data = extract_ranking_from_html(html, primary_site)
-                        if ranking_data:
-                            results.append({
-                                'Keyword': keyword,
-                                'Rank': ranking_data['rank'],
-                                'Page': ranking_data['page'],
-                                'Pixel Rank': ranking_data['pixel_rank'],
-                                'URL': ranking_data['url']
+                        primary_rank, competitor_ranks = extract_ranking_from_html(html, primary_site, competitors)
+                        result = {
+                            'Keyword': keyword,
+                            f'{primary_site} Rank': primary_rank['rank'] if primary_rank else None,
+                            f'{primary_site} Page': primary_rank['page'] if primary_rank else None,
+                            f'{primary_site} Pixel Rank': primary_rank['pixel_rank'] if primary_rank else None,
+                            f'{primary_site} URL': primary_rank['url'] if primary_rank else None,
+                        }
+                        for comp in competitors:
+                            result.update({
+                                f'{comp} Rank': competitor_ranks[comp]['rank'],
+                                f'{comp} Page': competitor_ranks[comp]['page'],
+                                f'{comp} Pixel Rank': competitor_ranks[comp]['pixel_rank'],
+                                f'{comp} URL': competitor_ranks[comp]['url'],
                             })
+                        results.append(result)
 
                     # Update progress
                     progress = ((idx + 1) / total_keywords) * 100
@@ -127,7 +147,7 @@ def main():
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
             else:
-                st.warning("No ranking data found for the primary site.")
+                st.warning("No ranking data found for the primary site or competitors.")
 
 if __name__ == "__main__":
     main()
