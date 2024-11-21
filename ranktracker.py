@@ -33,6 +33,14 @@ def scrape_keyword(keyword, primary_site, competitors, latitude, longitude):
             time.sleep(2)
     return None
 
+# Function to extract ranking details (placeholder for processing)
+def extract_ranking_from_html(html, primary_site, competitors):
+    # Add actual parsing logic here
+    return {
+        "Primary Rank": None,
+        "Competitor Ranks": None
+    }
+
 # Streamlit App
 def main():
     st.title("Google SERP Ranking Scraper")
@@ -76,12 +84,36 @@ def main():
                     keyword = futures[future]
                     html = future.result()
                     if html:
-                        # Process and extract data here
-                        pass
+                        # Extract ranking details
+                        rankings = extract_ranking_from_html(html, primary_site, competitors)
+                        results.append({
+                            "Keyword": keyword,
+                            "Primary Rank": rankings["Primary Rank"],
+                            "Competitor Ranks": rankings["Competitor Ranks"]
+                        })
 
                     # Update progress
                     progress = ((idx + 1) / total_keywords) * 100
                     st.progress(int(progress))
+
+            # Save results
+            if results:
+                results_df = pd.DataFrame(results)
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_file = f"SERP_Ranking_Results_{timestamp}.xlsx"
+                results_df.to_excel(output_file, index=False)
+
+                st.success("Scraping Completed!")
+                st.write("Download Results Below:")
+                with open(output_file, "rb") as file:
+                    st.download_button(
+                        label="Download Results",
+                        data=file,
+                        file_name=output_file,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+            else:
+                st.warning("No ranking data found for the primary site or competitors.")
 
 if __name__ == "__main__":
     main()
