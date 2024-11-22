@@ -29,17 +29,35 @@ def scrape_keyword(keyword, primary_site, competitors, latitude, longitude):
             response = requests.get(api_url, headers=headers, timeout=60)
             if response.status_code == 200:
                 return response.text
-        except:
+        except Exception as e:
+            st.error(f"Error fetching data for {keyword}: {e}")
             time.sleep(2)
     return None
 
-# Function to extract ranking details (placeholder for processing)
+# Function to extract ranking details
 def extract_ranking_from_html(html, primary_site, competitors):
-    # Add actual parsing logic here
-    return {
-        "Primary Rank": None,
-        "Competitor Ranks": None
-    }
+    soup = BeautifulSoup(html, 'html.parser')
+    search_results = soup.find_all('div', class_='tF2Cxc')
+    rank_counter = 0
+    primary_rank = None
+    competitor_ranks = {comp: None for comp in competitors}
+
+    for result in search_results:
+        link_element = result.find('a')
+        if link_element:
+            link = link_element['href']
+            rank_counter += 1
+
+            # Check for primary site
+            if primary_site in link and primary_rank is None:
+                primary_rank = rank_counter
+
+            # Check for competitors
+            for comp in competitors:
+                if comp in link and competitor_ranks[comp] is None:
+                    competitor_ranks[comp] = rank_counter
+
+    return primary_rank, competitor_ranks
 
 # Streamlit App
 def main():
@@ -71,7 +89,6 @@ def main():
             keywords = keywords_df['Keyword'].tolist()
             total_keywords = len(keywords)
             results = []
-            progress = 0
 
             # Scraping process
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -85,12 +102,14 @@ def main():
                     html = future.result()
                     if html:
                         # Extract ranking details
-                        rankings = extract_ranking_from_html(html, primary_site, competitors)
-                        results.append({
+                        primary_rank, competitor_ranks = extract_ranking_from_html(html, primary_site, competitors)
+                        result = {
                             "Keyword": keyword,
-                            "Primary Rank": rankings["Primary Rank"],
-                            "Competitor Ranks": rankings["Competitor Ranks"]
-                        })
+                            f"{primary_site} Rank": primary_rank,
+                        }
+                        for comp, rank in competitor_ranks.items():
+                            result[f"{comp} Rank"] = rank
+                        results.append(result)
 
                     # Update progress
                     progress = ((idx + 1) / total_keywords) * 100
