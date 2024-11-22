@@ -38,32 +38,35 @@ def extract_ranking_from_html(html, primary_site, competitors):
     soup = BeautifulSoup(html, 'html.parser')
     search_results = soup.find_all('div', class_='tF2Cxc')  # Google SERP search result container
     rank_counter = 0
-    results = []
+    primary_rank = None
+    primary_url = None
+    competitor_ranks = []
 
     for result in search_results:
         link_element = result.find('a')
         if link_element:
             rank_counter += 1
             link = link_element['href']
-            # Check if the link belongs to the primary site or a competitor
-            matched_site = None
-            if primary_site in link:
-                matched_site = primary_site
-            else:
-                for comp in competitors:
-                    if comp in link:
-                        matched_site = comp
-                        break
 
-            # Append details only if it's primary site or competitors
-            if matched_site:
-                results.append({
-                    "Rank": rank_counter,
-                    "Page": (rank_counter - 1) // 10 + 1,  # Approximate page number
-                    "URL": link,
-                    "Matched Site": matched_site
-                })
-    return results
+            # Check for primary website ranking
+            if primary_site in link and not primary_rank:
+                primary_rank = rank_counter
+                primary_url = link
+
+            # Check for competitor rankings
+            for comp in competitors:
+                if comp in link:
+                    competitor_ranks.append({
+                        "Competitor": comp,
+                        "Rank": rank_counter,
+                        "URL": link
+                    })
+
+    return {
+        "Primary Rank": primary_rank,
+        "Primary URL": primary_url,
+        "Competitors": competitor_ranks
+    }
 
 # Streamlit App
 def main():
@@ -109,10 +112,19 @@ def main():
                     html = future.result()
                     if html:
                         # Extract ranking details
-                        extracted_results = extract_ranking_from_html(html, primary_site, competitors)
-                        for res in extracted_results:
-                            res["Keyword"] = keyword  # Add the keyword to each result
-                            results.append(res)
+                        rankings = extract_ranking_from_html(html, primary_site, competitors)
+                        result = {
+                            "Keyword": keyword,
+                            "Primary Rank": rankings["Primary Rank"],
+                            "Primary URL": rankings["Primary URL"],
+                        }
+
+                        # Add competitor rankings
+                        for comp in rankings["Competitors"]:
+                            result[f"{comp['Competitor']} Rank"] = comp["Rank"]
+                            result[f"{comp['Competitor']} URL"] = comp["URL"]
+
+                        results.append(result)
 
                     # Update progress
                     progress = ((idx + 1) / total_keywords) * 100
