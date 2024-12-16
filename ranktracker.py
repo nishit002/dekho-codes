@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 
-
 # Function to process uploaded file and handle case-insensitive columns
 def process_uploaded_file(uploaded_file):
     try:
@@ -116,6 +115,7 @@ def main():
 
     # Slider for parallel requests
     max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
+    batch_size = st.slider("Batch Size (Keywords per Request)", min_value=5, max_value=20, value=10)
 
     if st.button("Start Scraping"):
         if not keywords_and_urls:
@@ -127,6 +127,10 @@ def main():
 
         results = []
         total_keywords = len(keywords_and_urls)
+        processed_count = 0  # Counter for processed keywords
+
+        # Split keywords and URLs into batches
+        keyword_batches = [keywords_and_urls[i:i + batch_size] for i in range(0, len(keywords_and_urls), batch_size)]
 
         # Scraping process
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -142,8 +146,8 @@ def main():
                 if html:
                     result = extract_ranking(html, keyword, primary_domain, primary_url, competitors)
                     results.append(result)
-
-                st.write(f"Processed {idx + 1}/{total_keywords} keywords.")
+                    processed_count += 1  # Increment processed count
+                    st.write(f"Processed {processed_count}/{total_keywords} keywords.", end="\r", flush=True)
 
         # Save results
         if results:
