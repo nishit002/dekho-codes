@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 
+
 # Function to process uploaded file and handle case-insensitive columns
 def process_uploaded_file(uploaded_file):
     try:
@@ -113,10 +114,6 @@ def main():
     ).strip()
     competitors = [comp.strip() for comp in competitors_input.split(",") if comp.strip()]
 
-    # Slider for parallel requests
-    max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
-    batch_size = st.slider("Batch Size (Keywords per Request)", min_value=5, max_value=20, value=10)
-
     if st.button("Start Scraping"):
         if not keywords_and_urls:
             st.error("Please provide keywords.")
@@ -125,62 +122,68 @@ def main():
             st.error("Please provide the primary domain.")
             return
 
-        results = []
-        total_keywords = len(keywords_and_urls)
-        processed_count = 0  # Counter for processed keywords
+        # Process the first keyword as a sample
+        first_keyword, primary_url = keywords_and_urls[0]
+        html = scrape_google(first_keyword)
+        if html:
+            sample_result = extract_ranking(html, first_keyword, primary_domain, primary_url, competitors)
+            st.write("Sample Result for First Keyword:")
+            st.write(sample_result)
 
-        # Split keywords and URLs into batches
-        keyword_batches = [keywords_and_urls[i:i + batch_size] for i in range(0, len(keywords_and_urls), batch_size)]
+        # Confirm to proceed with the entire dataset
+        if st.button("Proceed with Full Scraping"):
+            results = []
+            total_keywords = len(keywords_and_urls)
+            processed_count = 0  # Counter for processed keywords
 
-        # Scraping process
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(
-                    scrape_google, keyword
-                ): (keyword, primary_url) for keyword, primary_url in keywords_and_urls
-            }
-
-            for idx, future in enumerate(as_completed(futures)):
-                keyword, primary_url = futures[future]
-                html = future.result()
-                if html:
-                    result = extract_ranking(html, keyword, primary_domain, primary_url, competitors)
-                    results.append(result)
-                    processed_count += 1  # Increment processed count
-                    st.write(f"Processed {processed_count}/{total_keywords} keywords.", end="\r", flush=True)
-
-        # Save results
-        if results:
-            flat_results = []
-            for res in results:
-                entry = {
-                    "Keyword": res["Keyword"],
-                    "Primary Rank": res["Primary Rank"],
-                    "Primary URL": res["Primary URL"],
-                    "Best URL Rank": res["Best URL Rank"],
-                    "Best URL": res["Best URL"],
+            # Scraping process with batch handling
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                futures = {
+                    executor.submit(scrape_google, keyword): (keyword, primary_url)
+                    for keyword, primary_url in keywords_and_urls
                 }
-                for comp in res["Competitors"]:
-                    entry[f"{comp['Competitor']} Rank"] = comp["Rank"]
-                    entry[f"{comp['Competitor']} URL"] = comp["URL"]
-                flat_results.append(entry)
 
-            results_df = pd.DataFrame(flat_results)
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = f"SERP_Ranking_Results_{timestamp}.xlsx"
-            results_df.to_excel(output_file, index=False)
+                for idx, future in enumerate(as_completed(futures)):
+                    keyword, primary_url = futures[future]
+                    html = future.result()
+                    if html:
+                        result = extract_ranking(html, keyword, primary_domain, primary_url, competitors)
+                        results.append(result)
+                        processed_count += 1
+                        st.write(f"Processed {processed_count}/{total_keywords} keywords.", end="\r", flush=True)
 
-            st.success("Scraping Completed!")
-            st.write("Download Results Below:")
-            with open(output_file, "rb") as file:
-                st.download_button(
-                    label="Download Results",
-                    data=file,
-                    file_name=output_file,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                )
-        else:
-            st.warning("No ranking data found.")
+            # Save results
+            if results:
+                flat_results = []
+                for res in results:
+                    entry = {
+                        "Keyword": res["Keyword"],
+                        "Primary Rank": res["Primary Rank"],
+                        "Primary URL": res["Primary URL"],
+                        "Best URL Rank": res["Best URL Rank"],
+                        "Best URL": res["Best URL"],
+                    }
+                    for comp in res["Competitors"]:
+                        entry[f"{comp['Competitor']} Rank"] = comp["Rank"]
+                        entry[f"{comp['Competitor']} URL"] = comp["URL"]
+                    flat_results.append(entry)
+
+                results_df = pd.DataFrame(flat_results)
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_file = f"SERP_Ranking_Results_{timestamp}.xlsx"
+                results_df.to_excel(output_file, index=False)
+
+                st.success("Scraping Completed!")
+                st.write("Download Results Below:")
+                with open(output_file, "rb") as file:
+                    st.download_button(
+                        label="Download Results",
+                        data=file,
+                        file_name=output_file,
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    )
+            else:
+                st.warning("No ranking data found.")
 
 if __name__ == "__main__":
     main()
