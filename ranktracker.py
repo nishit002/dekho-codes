@@ -114,6 +114,10 @@ def main():
     ).strip()
     competitors = [comp.strip() for comp in competitors_input.split(",") if comp.strip()]
 
+    # Slider for parallel requests and batch size
+    max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
+    batch_size = st.slider("Batch Size (Keywords per Request)", min_value=5, max_value=20, value=10)
+
     if st.button("Start Scraping"):
         if not keywords_and_urls:
             st.error("Please provide keywords.")
@@ -136,11 +140,15 @@ def main():
             total_keywords = len(keywords_and_urls)
             processed_count = 0  # Counter for processed keywords
 
-            # Scraping process with batch handling
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            # Split into batches
+            keyword_batches = [keywords_and_urls[i:i + batch_size] for i in range(0, len(keywords_and_urls), batch_size)]
+
+            # Scraping process
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {
-                    executor.submit(scrape_google, keyword): (keyword, primary_url)
-                    for keyword, primary_url in keywords_and_urls
+                    executor.submit(
+                        scrape_google, keyword
+                    ): (keyword, primary_url) for keyword, primary_url in keywords_and_urls
                 }
 
                 for idx, future in enumerate(as_completed(futures)):
