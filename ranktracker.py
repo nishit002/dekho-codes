@@ -100,7 +100,7 @@ def main():
 
         total_keywords = len(keywords_and_urls)
         results = []
-        progress = 0
+        urls_checked = 0  # Counter for URLs checked
 
         # Split keywords and URLs into batches
         keyword_batches = [keywords_and_urls[i:i + batch_size] for i in range(0, len(keywords_and_urls), batch_size)]
@@ -112,17 +112,15 @@ def main():
                 for batch in keyword_batches
             }
 
-            for idx, future in enumerate(as_completed(futures)):
+            for future in as_completed(futures):
                 batch = futures[future]
                 html = future.result()
                 if html:
                     # Extract rankings for the batch
                     batch_results = extract_ranking_from_html(html, batch)
                     results.extend(batch_results)
-
-                # Update progress
-                progress = ((idx + 1) / len(keyword_batches)) * 100
-                st.progress(int(progress))
+                    urls_checked += len(batch)  # Update count of URLs checked
+                    st.write(f"URLs Checked: {urls_checked}")  # Display count
 
         # Save results
         if results:
