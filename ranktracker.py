@@ -2,37 +2,33 @@ import streamlit as st
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
+
 
 # Function to process uploaded file and handle case-insensitive columns
 def process_uploaded_file(uploaded_file):
     try:
-        # Read the uploaded Excel file
         df = pd.read_excel(uploaded_file)
-
-        # Normalize column names (convert to lowercase for case-insensitivity)
         df.columns = df.columns.str.lower()
-
-        # Ensure 'keyword' and 'url' columns are present
-        if 'keyword' not in df.columns or 'url' not in df.columns:
-            st.error("Uploaded file must have 'Keyword' and 'URL' columns.")
+        if 'keyword' not in df.columns:
+            st.error("Uploaded file must have a 'Keyword' column.")
             return None
-
-        # Return the keywords and URLs as a list of tuples
-        return df[['keyword', 'url']].values.tolist()
-
+        if 'url' in df.columns:
+            return df[['keyword', 'url']].values.tolist()
+        else:
+            return [(kw, None) for kw in df['keyword'].tolist()]
     except Exception as e:
         st.error(f"Error processing file: {e}")
         return None
 
-# Function to scrape Google SERP for a batch of keywords
-def scrape_keywords_batch(keywords_batch):
-    combined_query = '+OR+'.join([kw.replace(" ", "+") for kw in keywords_batch])
-    api_url = f"https://www.google.com/search?q={combined_query}&num=100&gl=in&hl=en&device=mobile"
+
+# Function to scrape Google SERP
+def scrape_google(keyword):
+    query = keyword.replace(" ", "+")
+    api_url = f"https://www.google.com/search?q={query}&num=100&gl=in&hl=en&device=mobile"
     headers = {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15A372 Safari/604.1'
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15A372 Safari/604.1"
     }
 
     try:
@@ -43,88 +39,129 @@ def scrape_keywords_batch(keywords_batch):
         st.error(f"Error fetching data: {e}")
     return None
 
-# Function to extract rankings from HTML
-def extract_ranking_from_html(html, keywords_and_urls):
-    soup = BeautifulSoup(html, 'html.parser')
-    search_results = soup.find_all('div', class_='tF2Cxc')  # Google SERP search result container
-    results = []
 
-    for keyword, provided_url in keywords_and_urls:
-        rank_counter = 0
-        primary_rank = None
-        ranking_url = None
+# Function to extract rankings
+def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
+    soup = BeautifulSoup(html, "html.parser")
+    search_results = soup.find_all("div", class_="tF2Cxc")  # Google SERP search result container
+    rank_counter = 0
+    primary_rank = None
+    primary_ranking_url = None
+    competitor_ranks = []
+    best_url_rank = None
+    best_url = None
 
-        for result in search_results:
-            link_element = result.find('a')
-            if link_element:
-                rank_counter += 1
-                link = link_element['href']
+    for result in search_results:
+        rank_counter += 1
+        link_element = result.find("a")
+        if link_element:
+            link = link_element["href"]
 
-                # Check if ranking URL matches the provided URL
-                if provided_url in link and not primary_rank:
-                    primary_rank = rank_counter
-                    ranking_url = link
+            # Check for primary URL or domain
+            if primary_url and primary_url in link and not primary_rank:
+                primary_rank = rank_counter
+                primary_ranking_url = link
+            elif primary_domain in link and not primary_rank:
+                primary_rank = rank_counter
+                primary_ranking_url = link
 
-        results.append({
-            "Keyword": keyword,
-            "Provided URL": provided_url,
-            "Ranking URL": ranking_url,
-            "Rank": primary_rank
-        })
+            # Check for competitor rankings
+            for comp in competitors:
+                if comp in link:
+                    competitor_ranks.append({"Competitor": comp, "Rank": rank_counter, "URL": link})
 
-    return results
+            # Track the best URL
+            if not best_url_rank or rank_counter < best_url_rank:
+                best_url_rank = rank_counter
+                best_url = link
+
+    return {
+        "Keyword": keyword,
+        "Primary Rank": primary_rank,
+        "Primary URL": primary_ranking_url,
+        "Best URL Rank": best_url_rank,
+        "Best URL": best_url,
+        "Competitors": competitor_ranks,
+    }
+
 
 # Streamlit App
 def main():
-    st.title("Google SERP Ranking Scraper with URL Matching")
-    st.write("Upload an Excel file to extract rankings for specific keywords and URLs.")
+    st.title("Google SERP Ranking Scraper")
+    st.write("Upload a file or paste keywords to get rankings for a primary website and optional competitors.")
 
-    # File uploader
-    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
-
+    # File upload or text input
+    input_option = st.radio("Choose input method:", ("Upload Excel File", "Paste Keywords"))
     keywords_and_urls = []
-    if uploaded_file:
-        # Process the uploaded file
-        keywords_and_urls = process_uploaded_file(uploaded_file)
-        if keywords_and_urls:
-            st.success(f"File uploaded successfully with {len(keywords_and_urls)} rows.")
 
-    # Slider for parallel requests and batch size
+    if input_option == "Upload Excel File":
+        uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+        if uploaded_file:
+            keywords_and_urls = process_uploaded_file(uploaded_file)
+            if keywords_and_urls:
+                st.success(f"File uploaded successfully with {len(keywords_and_urls)} rows.")
+    elif input_option == "Paste Keywords":
+        pasted_text = st.text_area("Paste Keywords (one per line)")
+        if pasted_text.strip():
+            keywords = [kw.strip() for kw in pasted_text.split("\n") if kw.strip()]
+            keywords_and_urls = [(kw, None) for kw in keywords]
+            st.success(f"{len(keywords)} keywords added.")
+
+    # Input for primary and competitor domains
+    primary_domain = st.text_input("Enter Primary Domain (e.g., collegedekho.com)").strip()
+    competitors_input = st.text_input(
+        "Enter Competitor Domains (comma-separated, e.g., shiksha.com, getmyuni.com)"
+    ).strip()
+    competitors = [comp.strip() for comp in competitors_input.split(",") if comp.strip()]
+
+    # Slider for parallel requests
     max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
-    batch_size = st.slider("Batch Size (Keywords per Request)", min_value=5, max_value=20, value=10)
 
     if st.button("Start Scraping"):
         if not keywords_and_urls:
-            st.error("Please upload a valid file with 'Keyword' and 'URL' columns.")
+            st.error("Please provide keywords.")
+            return
+        if not primary_domain:
+            st.error("Please provide the primary domain.")
             return
 
-        total_keywords = len(keywords_and_urls)
         results = []
-        urls_checked = 0  # Counter for URLs checked
-
-        # Split keywords and URLs into batches
-        keyword_batches = [keywords_and_urls[i:i + batch_size] for i in range(0, len(keywords_and_urls), batch_size)]
+        total_keywords = len(keywords_and_urls)
 
         # Scraping process
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(scrape_keywords_batch, [kw[0] for kw in batch]): batch
-                for batch in keyword_batches
+                executor.submit(
+                    scrape_google, keyword
+                ): (keyword, primary_url) for keyword, primary_url in keywords_and_urls
             }
 
-            for future in as_completed(futures):
-                batch = futures[future]
+            for idx, future in enumerate(as_completed(futures)):
+                keyword, primary_url = futures[future]
                 html = future.result()
                 if html:
-                    # Extract rankings for the batch
-                    batch_results = extract_ranking_from_html(html, batch)
-                    results.extend(batch_results)
-                    urls_checked += len(batch)  # Update count of URLs checked
-                    st.write(f"URLs Checked: {urls_checked}")  # Display count
+                    result = extract_ranking(html, keyword, primary_domain, primary_url, competitors)
+                    results.append(result)
+
+                st.write(f"Processed {idx + 1}/{total_keywords} keywords.")
 
         # Save results
         if results:
-            results_df = pd.DataFrame(results)
+            flat_results = []
+            for res in results:
+                entry = {
+                    "Keyword": res["Keyword"],
+                    "Primary Rank": res["Primary Rank"],
+                    "Primary URL": res["Primary URL"],
+                    "Best URL Rank": res["Best URL Rank"],
+                    "Best URL": res["Best URL"],
+                }
+                for comp in res["Competitors"]:
+                    entry[f"{comp['Competitor']} Rank"] = comp["Rank"]
+                    entry[f"{comp['Competitor']} URL"] = comp["URL"]
+                flat_results.append(entry)
+
+            results_df = pd.DataFrame(flat_results)
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = f"SERP_Ranking_Results_{timestamp}.xlsx"
             results_df.to_excel(output_file, index=False)
@@ -136,10 +173,10 @@ def main():
                     label="Download Results",
                     data=file,
                     file_name=output_file,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
         else:
-            st.warning("No ranking data found for the provided URLs.")
+            st.warning("No ranking data found.")
 
 if __name__ == "__main__":
     main()
