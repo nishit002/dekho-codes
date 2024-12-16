@@ -45,27 +45,28 @@ def extract_ranking_from_html(html, primary_site, competitors):
                 primary_rank = rank_counter
                 primary_url = link
 
-            # Check for competitor rankings
-            for comp in competitors:
-                if comp in link:
-                    # Ensure no duplicates for the same rank
-                    if not any(c['Rank'] == rank_counter for c in competitor_ranks):
-                        competitor_ranks.append({
-                            "Competitor": comp,
-                            "Rank": rank_counter,
-                            "URL": link
-                        })
+            # Check for competitor rankings (only if competitors are provided)
+            if competitors:
+                for comp in competitors:
+                    if comp in link:
+                        # Ensure no duplicates for the same rank
+                        if not any(c['Rank'] == rank_counter for c in competitor_ranks):
+                            competitor_ranks.append({
+                                "Competitor": comp,
+                                "Rank": rank_counter,
+                                "URL": link
+                            })
 
     return {
         "Primary Rank": primary_rank,
         "Primary URL": primary_url,
-        "Competitors": competitor_ranks
+        "Competitors": competitor_ranks if competitors else None
     }
 
 # Streamlit App
 def main():
     st.title("Google SERP Ranking Scraper")
-    st.write("Upload an Excel file or paste keywords to extract ranking details for a primary website and its competitors.")
+    st.write("Upload an Excel file or paste keywords to extract ranking details for a primary website and optionally its competitors.")
 
     # Options for keyword input
     input_option = st.radio(
@@ -91,7 +92,7 @@ def main():
 
     # Inputs for primary site and competitors
     primary_site = st.text_input("Enter Primary Website (e.g., collegedekho.com)")
-    competitors_input = st.text_input("Enter Competitor Websites (comma-separated, e.g., getmyuni.com,shiksha.com)")
+    competitors_input = st.text_input("Enter Competitor Websites (comma-separated, optional)")
     competitors = [comp.strip() for comp in competitors_input.split(',') if comp.strip()]
 
     # Slider for parallel requests
@@ -103,9 +104,6 @@ def main():
             return
         if not primary_site:
             st.error("Please enter the primary website.")
-            return
-        if not competitors:
-            st.error("Please enter at least one competitor.")
             return
 
         total_keywords = len(keywords)
@@ -131,10 +129,11 @@ def main():
                         "Primary URL": rankings["Primary URL"],
                     }
 
-                    # Add competitor rankings
-                    for comp in rankings["Competitors"]:
-                        result[f"{comp['Competitor']} Rank"] = comp["Rank"]
-                        result[f"{comp['Competitor']} URL"] = comp["URL"]
+                    # Add competitor rankings if applicable
+                    if competitors:
+                        for comp in rankings["Competitors"]:
+                            result[f"{comp['Competitor']} Rank"] = comp["Rank"]
+                            result[f"{comp['Competitor']} URL"] = comp["URL"]
 
                     results.append(result)
 
@@ -159,7 +158,7 @@ def main():
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
         else:
-            st.warning("No ranking data found for the primary site or competitors.")
+            st.warning("No ranking data found for the primary site.")
 
 if __name__ == "__main__":
     main()
