@@ -19,3 +19,4 @@ google-search-results
 webdriver-manager
 selenium
 matplotlib
+requests_cache
