@@ -5,24 +5,38 @@ from bs4 import BeautifulSoup
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
-import requests_cache
 
-# Use Streamlit secrets to securely fetch the API key
-SCRAPERAPI_KEY = st.secrets["SCRAPERAPI_KEY"]
+# Function to process uploaded file and handle case-insensitive columns
+def process_uploaded_file(uploaded_file):
+    try:
+        # Read the uploaded Excel file
+        df = pd.read_excel(uploaded_file)
 
-# Setup caching to avoid redundant requests
-session = requests_cache.CachedSession('google_serp_cache', expire_after=3600)
+        # Normalize column names (convert to lowercase for case-insensitivity)
+        df.columns = df.columns.str.lower()
 
-# Function to scrape Google SERP (batched keywords)
+        # Ensure 'keyword' and 'url' columns are present
+        if 'keyword' not in df.columns or 'url' not in df.columns:
+            st.error("Uploaded file must have 'Keyword' and 'URL' columns.")
+            return None
+
+        # Return the keywords and URLs as a list of tuples
+        return df[['keyword', 'url']].values.tolist()
+
+    except Exception as e:
+        st.error(f"Error processing file: {e}")
+        return None
+
+# Function to scrape Google SERP for a batch of keywords
 def scrape_keywords_batch(keywords_batch):
     combined_query = '+OR+'.join([kw.replace(" ", "+") for kw in keywords_batch])
-    api_url = f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url=https://www.google.com/search?q={combined_query}&num=100&gl=in&hl=en&device=mobile"
+    api_url = f"https://www.google.com/search?q={combined_query}&num=100&gl=in&hl=en&device=mobile"
     headers = {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15A372 Safari/604.1'
     }
 
     try:
-        response = session.get(api_url, headers=headers, timeout=30)
+        response = requests.get(api_url, headers=headers, timeout=30)
         if response.status_code == 200:
             return response.text
     except requests.RequestException as e:
@@ -67,23 +81,21 @@ def main():
 
     # File uploader
     uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+
     keywords_and_urls = []
-
     if uploaded_file:
-        keywords_df = pd.read_excel(uploaded_file)
-        if {'Keyword', 'URL'}.issubset(keywords_df.columns.str.lower()):
-            keywords_df.columns = keywords_df.columns.str.lower()
-            keywords_and_urls = keywords_df[['keyword', 'url']].values.tolist()
-        else:
-            st.error("Uploaded file must have 'Keyword' and 'URL' columns.")
+        # Process the uploaded file
+        keywords_and_urls = process_uploaded_file(uploaded_file)
+        if keywords_and_urls:
+            st.success(f"File uploaded successfully with {len(keywords_and_urls)} rows.")
 
-    # Inputs for parallel requests and batch size
+    # Slider for parallel requests and batch size
     max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
     batch_size = st.slider("Batch Size (Keywords per Request)", min_value=5, max_value=20, value=10)
 
     if st.button("Start Scraping"):
         if not keywords_and_urls:
-            st.error("Please upload a file with valid 'Keyword' and 'URL' columns.")
+            st.error("Please upload a valid file with 'Keyword' and 'URL' columns.")
             return
 
         total_keywords = len(keywords_and_urls)
