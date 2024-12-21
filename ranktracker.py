@@ -72,7 +72,8 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
             # Check for competitor rankings
             for comp in competitors:
                 if comp in link:
-                    competitor_ranks.append({"Competitor": comp, "Rank": rank_counter, "URL": link})
+                    if not any(cr["URL"] == link for cr in competitor_ranks):
+                        competitor_ranks.append({"Competitor": comp, "Rank": rank_counter, "URL": link})
 
             # Track the best URL
             if not best_url_rank or rank_counter < best_url_rank:
