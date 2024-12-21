@@ -4,6 +4,8 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
+import urllib.parse
+import time
 
 # Function to process uploaded file and handle case-insensitive columns
 def process_uploaded_file(uploaded_file):
@@ -24,10 +26,11 @@ def process_uploaded_file(uploaded_file):
 # Function to scrape Google SERP using ScraperAPI
 def scrape_google(keyword):
     SCRAPERAPI_KEY = st.secrets["SCRAPERAPI_KEY"]  # Get ScraperAPI key from Streamlit secrets
-    query = keyword.replace(" ", "+")
-    api_url = f"http://api.scraperapi.com/?api_key={SCRAPERAPI_KEY}&url=https://www.google.com/search?q={query}&num=100&gl=in&hl=en&device=mobile"
+    query = urllib.parse.quote_plus(keyword)
+    api_url = f"http://api.scraperapi.com/?api_key={SCRAPERAPI_KEY}&url=https://www.google.com/search?q={query}&num=100&gl=in&hl=en&device=mobile&country_code=us"
 
     try:
+        time.sleep(2)  # Add delay to avoid overloading ScraperAPI
         response = requests.get(api_url, timeout=30)
         st.write(f"Scraping Keyword: {keyword}")  # Debug
         st.write(f"Response Status Code: {response.status_code}")  # Debug
@@ -35,6 +38,7 @@ def scrape_google(keyword):
             return response.text
         else:
             st.warning(f"Failed to fetch data for keyword: {keyword}")
+            st.write(response.text[:500])  # Debug: Print response content
     except requests.RequestException as e:
         st.error(f"Error fetching data: {e}")
     return None
