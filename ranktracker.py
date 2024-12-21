@@ -145,7 +145,8 @@ def main():
             st.write(sample_result)
 
         # Confirm to proceed with the entire dataset
-        if st.button("Proceed with Full Scraping"):
+        proceed_button = st.button("Proceed with Full Scraping")
+        if proceed_button:
             results = []
             total_keywords = len(keywords_and_urls)
             processed_count = 0  # Counter for processed keywords
@@ -170,7 +171,7 @@ def main():
                         processed_count += 1
                         st.write(f"Processed {processed_count}/{total_keywords} keywords.", end="\r", flush=True)
 
-            # Save results
+            # Display results in a table
             if results:
                 flat_results = []
                 for res in results:
@@ -187,6 +188,9 @@ def main():
                     flat_results.append(entry)
 
                 results_df = pd.DataFrame(flat_results)
+                st.write("### Results Table:")
+                st.dataframe(results_df)
+
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 output_file = f"SERP_Ranking_Results_{timestamp}.xlsx"
                 results_df.to_excel(output_file, index=False)
