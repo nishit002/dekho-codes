@@ -51,7 +51,7 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
     rank_counter = 0
     primary_rank = None
     primary_ranking_url = None
-    competitor_ranks = []
+    competitor_ranks = {}
     best_url_rank = None
     best_url = None
 
@@ -72,8 +72,8 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
             # Check for competitor rankings
             for comp in competitors:
                 if comp in link:
-                    if not any(cr["URL"] == link for cr in competitor_ranks):
-                        competitor_ranks.append({"Competitor": comp, "Rank": rank_counter, "URL": link})
+                    if comp not in competitor_ranks or rank_counter < competitor_ranks[comp]["Rank"]:
+                        competitor_ranks[comp] = {"Competitor": comp, "Rank": rank_counter, "URL": link}
 
             # Track the best URL
             if not best_url_rank or rank_counter < best_url_rank:
@@ -86,7 +86,7 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
         "Primary URL": primary_ranking_url,
         "Best URL Rank": best_url_rank,
         "Best URL": best_url,
-        "Competitors": competitor_ranks,
+        "Competitors": list(competitor_ranks.values()),
     }
 
 # Streamlit App
