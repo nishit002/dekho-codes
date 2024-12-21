@@ -21,16 +21,14 @@ def process_uploaded_file(uploaded_file):
         st.error(f"Error processing file: {e}")
         return None
 
-# Function to scrape Google SERP
+# Function to scrape Google SERP using ScraperAPI
 def scrape_google(keyword):
+    SCRAPERAPI_KEY = st.secrets["SCRAPERAPI_KEY"]  # Get ScraperAPI key from Streamlit secrets
     query = keyword.replace(" ", "+")
-    api_url = f"https://www.google.com/search?q={query}&num=100&gl=in&hl=en&device=mobile"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15A372 Safari/604.1"
-    }
+    api_url = f"http://api.scraperapi.com/?api_key={SCRAPERAPI_KEY}&url=https://www.google.com/search?q={query}&num=100&gl=in&hl=en&device=mobile"
 
     try:
-        response = requests.get(api_url, headers=headers, timeout=30)
+        response = requests.get(api_url, timeout=30)
         st.write(f"Scraping Keyword: {keyword}")  # Debug
         st.write(f"Response Status Code: {response.status_code}")  # Debug
         if response.status_code == 200:
