@@ -25,7 +25,7 @@ def process_uploaded_file(uploaded_file):
         return None
 
 # Function to scrape Google SERP using ScraperAPI
-def scrape_google(keyword, location="28.4595,77.0266", site_search=None):
+def scrape_google(keyword, site_search=None):
     SCRAPERAPI_KEY = st.secrets["SCRAPERAPI_KEY"]  # Get ScraperAPI key from Streamlit secrets
     query = urllib.parse.quote_plus(keyword)
     if site_search:
@@ -98,16 +98,19 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
     }
 
 # Function to get crawled URL if primary rank is None
-def fetch_crawled_url(keyword, primary_domain):
-    html = scrape_google(keyword, site_search=primary_domain)
+def fetch_crawled_url(primary_domain):
+    html = scrape_google("", site_search=primary_domain)
     if html:
         soup = BeautifulSoup(html, "html.parser")
         search_results = soup.find_all("div", class_="tF2Cxc")
-        for rank, result in enumerate(search_results, start=1):
-            link_element = result.find("a")
+        if search_results:
+            link_element = search_results[0].find("a")
             if link_element:
-                return {"Crawled Rank": rank, "Crawled URL": link_element["href"]}
-    return {"Crawled Rank": None, "Crawled URL": None}
+                crawled_url = link_element["href"]
+                st.write(f"Crawled URL for domain {primary_domain}: {crawled_url}")  # Debug statement
+                return crawled_url
+    st.write(f"No crawled URL found for domain {primary_domain}.")  # Debug statement
+    return None
 
 # Streamlit App
 def main():
@@ -185,8 +188,8 @@ def main():
                 if html:
                     result = extract_ranking(html, keyword, primary_domain, primary_url, competitors)
                     if result["Primary Rank"] is None:  # Fetch crawled URL if primary rank is not found
-                        crawled_data = fetch_crawled_url(keyword, primary_domain)
-                        result.update(crawled_data)
+                        crawled_url = fetch_crawled_url(primary_domain)
+                        result["Crawled URL"] = crawled_url
                     results.append(result)
                     processed_count += 1
                     st.write(f"Processed {processed_count}/{total_keywords} keywords.", end="\r", flush=True)
@@ -201,7 +204,6 @@ def main():
                     "Primary URL": res["Primary URL"],
                     "Best URL Rank": res["Best URL Rank"],
                     "Best URL": res["Best URL"],
-                    "Crawled Rank": res.get("Crawled Rank"),
                     "Crawled URL": res.get("Crawled URL"),
                 }
                 for comp in res["Competitors"]:
