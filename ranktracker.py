@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime
 import urllib.parse
 import time
+from urllib.parse import urlparse
 
 # Function to process uploaded file and handle case-insensitive columns
 def process_uploaded_file(uploaded_file):
@@ -60,18 +61,20 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
         link_element = result.find("a")
         if link_element:
             link = link_element["href"]
+            domain = urlparse(link).netloc.lower()
 
             # Check for primary URL or domain
             if primary_url and primary_url in link and not primary_rank:
                 primary_rank = rank_counter
                 primary_ranking_url = link
-            elif primary_domain in link and not primary_rank:
+            elif primary_domain in domain and not primary_rank:
                 primary_rank = rank_counter
                 primary_ranking_url = link
 
             # Check for competitor rankings
             for comp in competitors:
-                if comp in link:
+                if comp in domain:
+                    # Keep the best-ranked URL for the competitor
                     if comp not in competitor_ranks or rank_counter < competitor_ranks[comp]["Rank"]:
                         competitor_ranks[comp] = {"Competitor": comp, "Rank": rank_counter, "URL": link}
 
@@ -86,7 +89,7 @@ def extract_ranking(html, keyword, primary_domain, primary_url, competitors):
         "Primary URL": primary_ranking_url,
         "Best URL Rank": best_url_rank,
         "Best URL": best_url,
-        "Competitors": list(competitor_ranks.values()),
+        "Competitors": list(competitor_ranks.values()),  # Return as a list
     }
 
 # Streamlit App
@@ -116,7 +119,7 @@ def main():
     competitors_input = st.text_input(
         "Enter Competitor Domains (comma-separated, e.g., competitor1.com, competitor2.com)"
     ).strip()
-    competitors = [comp.strip() for comp in competitors_input.split(",") if comp.strip()]
+    competitors = [comp.strip().lower() for comp in competitors_input.split(",") if comp.strip()]
 
     # Slider for parallel requests and batch size
     max_workers = st.slider("Number of Parallel Requests", min_value=1, max_value=10, value=5)
